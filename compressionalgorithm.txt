@@ -1,0 +1,137 @@
+
+Render as a string (with appropriate escape characters added)
+
+repeated strings are saved as dictionary entries, up to 26^26
+
+0. Search for any instances of the reference key indicator, make this the first
+	dictionary entry if there's a match
+
+1. find the longest repeated set of characters
+
+candidate0 = ""
+for i in len(string)
+	candidate1 = ""
+	candidate2 = ""
+	for j in len(string[i+1:])
+		if string[i+j] == string[i+1:]
+			candidate1 += string[i+j]
+			candidate2 += string[index-->end][j]
+
+2. save longest match in dictionary (with the most recent available letter as
+	a key, up to z)
+
+A = {"a" : (longest repeated string),...}
+
+3. Find next longest repeated string (handle if it references the first
+	dictionary)
+
+4. Dictionaries can reference other dictionaries with a special reference key
+	indicator followed by the 2-character reference
+
+
+Pass 2:
+
+Check dictionary entries for matched patterns, then reduce until dictionary
+	entries contain nothing but uncompressed strings or dictionary
+	references, then reduce the dictionary references to strings and 
+	add a dictionary reference entry indicator to the beginning
+
+
+
+Example:
+
+	this is some text. this is test text. this is some test text.
+
+Step 1.a: "this is some te" is the longest repeated string, so it is saved as A['a']
+
+	A=dict('a','this is some te')
+
+	<:Aa:>xt. this is test text. <:Aa:>st text.
+
+Step 1.b:	"st text." is the next longest repeated string
+
+	A['b'] = 'st text.'
+	       
+	<:Aa:>xt. this is te<:Ab:> <:Aa:><:Ab:>
+
+Step 1.c: the next longest repeated string is "is "
+
+	A['c'] = 'is '
+
+	<:Aa:>xt. th<:Ac:><:Ac:>te<:Ab:> <:Aa:><:Ab:>
+
+
+
+Step 2: No more strings longer than 2 characters are repeated, so the algorithm
+		finishes the first stage and begins stage 2.
+	Now, dictionary entries are searched to see if they contain existing
+		dictionary entries. START WITH THE LARGEST ONES (i.e. just go in order,
+		because they should already be essentially sored by size???)
+
+	A = {('a':'this is some te'),('b':'st text.'),('c':'is ')}
+
+	Entry A['a'] contains 'is ', or A['c'], so A['a'] is amended to
+		reference A['c']:
+
+		A['a'] = 'th<:Ac:><:Ac:>some te'
+
+
+
+Step 3: No more dictionary entries contain references to other existing  dictionary
+		entries, so stage2 is finished, and stage 3 begins.
+	Dictionary entries are now searched for matching strings longer than 2
+		characters and turns these into new entries and replaces them
+		in their containing entries with references
+	
+	A['a'] and A['b'] both contain the string ' te', so ' te' becomes a new
+		entry.
+
+	A['d'] = ' te'
+
+	A = {('a':'th<:Ac:><:Ac:>some<:Ad:>'),('b':'st<:Ad:>xt.'),('c':'is ')('d':' te')}
+
+Step 4: No more matches longer than 2 characters can be found between (or within) the existing
+		dictionary entries, so stage 3 is finished, and stage 4 begins.
+	Now, all remaining unallocated string bits are stored as new dictionary entries, IF
+		an identical entry does not already exist, otherwise it is replaced with
+		the appropriate reference.
+
+	All remaining pieces are unique, so each becomes a new unique dictionary entry
+
+	A = {('a':'<:Ae:><:Ac:><:Ac:><:Af:><:Ad:>'),('b':'<:Ag:><:Ad:><:Ah:>'),('c':'is ')('d':' te')
+		('e':'th'),('f':'some'),('g':'st'),('h':'xt.')}
+
+
+Step 5: Sort the dictionary entries so they're in order by size!!!
+
+Step 6: Now that all dictionary entries are either pure references or unique strings, stage 4
+		is finished, and the final compressed string is ready:
+
+	AeAcAcAfAd.AgAdAh:>3is 3te 2th4some2st3xt.
+
+		Next, it orders the unique strings by length, then counts how many
+		of each there are, then saves these lengths as a string
+	
+	0231 (none that are 1 char long, 2 that are 2 chars long, etc...)
+	skip 0's with ,#, where # is the # of empty lengths
+	(there might be a gap between say 5 and 128 or whatever...)
+
+	Final compressed string:
+	
+	AeAcAcAfAd.AgAdAh:,1,2.3.1:thstis te xt.some
+
+
+Decompression works backwards, creating dictionaries, then replacing references
+	with entries in reverse alphabetical order by key (Zz, Zy, ...)
+
+AeAcAcAfAd.AgAdAh:,1,2.3.1:thstis te xt.some
+
+this is some text. this is test text. this is some test text.
+
+It's only 28% compression for this string, but I imagine it would be a lot more dramatic
+for most large files...
+
+
+'abcdefghijklmnopqrstuvwxyz' would actually be slightly longer:
+
+:,25,:abcdefghijklmnopqrstuvwxyz
